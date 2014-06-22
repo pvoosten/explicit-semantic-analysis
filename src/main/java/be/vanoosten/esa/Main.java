@@ -6,8 +6,8 @@
 
 package be.vanoosten.esa;
 
-import de.tudarmstadt.ukp.wikipedia.api.WikiConstants;
 import java.io.File;
+import org.apache.lucene.analysis.Analyzer;
 
 /**
  *
@@ -15,12 +15,12 @@ import java.io.File;
  */
 public class Main {
     public static void main(String[] args) {
-        WikiIndexer indexer = new WikiIndexer(WikiConstants.Language.dutch);
+        WikiIndexer indexer = new WikiIndexer();
         TermIndexWriter termIndexWriter = new TermIndexWriter();
+        Analyzer analyzer = new NlwikiAnalyzer();
         indexer.setTermIndexWriter(termIndexWriter);
         indexer.parseXmlDump(String.join(File.separator, "D:", "Downloads","nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
-        
-
+        termIndexWriter.close();
     }
     
 }
