@@ -6,19 +6,12 @@
 
 package be.vanoosten.esa;
 
-import de.tudarmstadt.ukp.wikipedia.api.WikiConstants.Language;
-import de.tudarmstadt.ukp.wikipedia.parser.ParsedPage;
-import de.tudarmstadt.ukp.wikipedia.parser.mediawiki.MediaWikiParser;
-import de.tudarmstadt.ukp.wikipedia.parser.mediawiki.MediaWikiParserFactory;
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.parsers.ParserConfigurationException;
@@ -35,22 +28,22 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 public class WikiIndexer extends DefaultHandler {
     
-    private final MediaWikiParserFactory wikiFactory;
-    private final MediaWikiParser wikiParser;
     private final SAXParserFactory saxFactory;
     private boolean inPage;
     private boolean inPageTitle;
     private boolean inPageText;
     private StringBuilder content = new StringBuilder();
+    private TermIndexWriter termIndexWriter;
     
-    public WikiIndexer(Language language) {
+    public WikiIndexer() {
         saxFactory = SAXParserFactory.newInstance();
         saxFactory.setNamespaceAware(true);
         saxFactory.setValidating(true);
         saxFactory.setXIncludeAware(true);
-        
-        wikiFactory = new MediaWikiParserFactory(language);
-        wikiParser = wikiFactory.createParser();
+    }
+    
+    public void setTermIndexWriter(TermIndexWriter termIndexWriter){
+        this.termIndexWriter = termIndexWriter;
     }
     
     public void parseXmlDump(String path){
@@ -69,13 +62,7 @@ public class WikiIndexer extends DefaultHandler {
         } catch (IOException ex) {
             Logger.getLogger(WikiIndexer.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
-    
-    public static void main(String[] args) {
-        WikiIndexer indexer = new WikiIndexer(Language.dutch);
-        indexer.parseXmlDump(String.join(File.separator, "D:", "Downloads","nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
-    }
-    
+    }    
     
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
@@ -97,12 +84,9 @@ public class WikiIndexer extends DefaultHandler {
             System.out.println(content.toString());
         }else if(inPage && inPageText && "text".equals(localName)){
             inPageText = false;
-            ParsedPage page = wikiParser.parse(content.toString());
-            if(!page.getCategories().isEmpty()){
-                System.out.println("Categories:\n===========");
-                page.getCategories().forEach(x -> System.out.println(x.getText()));
-            }
-            page.getTemplates().forEach(tpl-> System.out.println(tpl.getName()));
+            String wikiText = content.toString();
+            index(wikiText);
+            
         }else if(inPage && "page".equals(localName)){
             inPage = false;
         }
