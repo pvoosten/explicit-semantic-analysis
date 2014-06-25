@@ -35,6 +35,7 @@ public class WikiIndexer extends DefaultHandler {
     private StringBuilder content = new StringBuilder();
     private TermIndexWriter termIndexWriter;
     private String wikiTitle;
+    private int numIndexed = 0;
     
     public WikiIndexer() {
         saxFactory = SAXParserFactory.newInstance();
@@ -84,10 +85,16 @@ public class WikiIndexer extends DefaultHandler {
             inPageTitle = false;
             wikiTitle = content.toString();
         }else if(inPage && inPageText && "text".equals(localName)){
-            inPageText = false;
-            String wikiText = content.toString();
-            termIndexWriter.index(wikiTitle, wikiText);
-            
+                inPageText = false;
+                String wikiText = content.toString();
+            try {
+                termIndexWriter.index(wikiTitle, wikiText);
+                numIndexed++;
+                if(numIndexed%1000==0)
+                    System.out.println(numIndexed);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         }else if(inPage && "page".equals(localName)){
             inPage = false;
         }
