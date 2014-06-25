@@ -31,40 +31,71 @@ import org.apache.lucene.util.Version;
 public class Main {
     
     public static void main(String[] args) throws IOException, ParseException {
-        indexing();
-        searching();
+        String indexPath = String.join(File.separator, "D:", "Development", "esa", "nlwiki");
+        File indexDirectory = new File(indexPath);
+
+        // indexing(indexDirectory);
+        searching(indexDirectory);
     }
     
-    public static void searching() throws IOException, ParseException {
+    public static void searching(File indexDirectory) throws IOException, ParseException {
         ExecutorService executorService = Executors.newFixedThreadPool(8);
         
-        String indexPath = String.join(File.separator, "D:", "Development", "esa");
-        File indexDirectory = new File(indexPath);
         try (IndexReader indexReader = DirectoryReader.open(FSDirectory.open(indexDirectory))) {
             IndexSearcher searcher = new IndexSearcher(indexReader, executorService);
             
             Analyzer analyzer = new DutchAnalyzer(Version.LUCENE_48);
             QueryParser parser = new QueryParser(Version.LUCENE_48, TermIndexWriter.TEXT_FIELD, analyzer);
-            Query query = parser.parse("Galapagosreuzenschildpad kan erg groot worden");
             
-            TopDocs topDocs = searcher.search(query, 10);
+            // searchForQuery(parser, searcher, "anoniem", indexReader);
+            // searchForQuery(parser, searcher, "verborgen kennis", indexReader);
+            // searchForQuery(parser, searcher, "korte verhalen kortverhalen", indexReader);
+            // searchForQuery(parser, searcher, "essentie van verhalen", indexReader);
+            // searchForQuery(parser, searcher, "wijsheid", indexReader);
             
-            System.out.println("total hits: " + topDocs.totalHits);
-            for(ScoreDoc sd : topDocs.scoreDocs){
-                System.out.println(String.format("doc {} score {} shardIndex {} title {}", sd.doc, sd.score, sd.shardIndex, indexReader.document(sd.doc).get(TermIndexWriter.TITLE_FIELD)));
-            }
+            searchForQuery(parser, searcher, "wezenlijkheid -potter -smurf -\"lijst van\"", indexReader);
+            searchForQuery(parser, searcher, "verborgen verleden", indexReader);
+            searchForQuery(parser, searcher, "verborgen verhalen", indexReader);
+            searchForQuery(parser, searcher, "levenswijsheid vermogen en wijsheid -sirach", indexReader);
+            
+        }
+    }
+
+    private static void searchForQuery(QueryParser parser, IndexSearcher searcher, String queryString, final IndexReader indexReader) throws ParseException, IOException {
+        Query query = parser.parse(queryString);
+        TopDocs topDocs = searcher.search(query, 12);
+        System.out.println(String.format("%d hits voor \"%s\"",topDocs.totalHits, queryString));
+        for(ScoreDoc sd : topDocs.scoreDocs){
+            System.out.println(String.format("doc %d score %.2f shardIndex %d title \"%s\"", sd.doc, sd.score, sd.shardIndex, indexReader.document(sd.doc).get(TermIndexWriter.TITLE_FIELD)));
         }
     }
     
-    public static void indexing() throws IOException {
-        String directoryPath = String.join(File.separator, "D:", "Development", "esa");
-        File directoryFile = new File(directoryPath);
-        try (Directory directory = FSDirectory.open(directoryFile)) {
+    public static void indexing(File indexDirectory) throws IOException {
+        try (Directory directory = FSDirectory.open(indexDirectory)) {
             WikiIndexer indexer = new WikiIndexer();
             Analyzer analyzer = new NlwikiAnalyzer();
-            TermIndexWriter termIndexWriter = new TermIndexWriter(analyzer, directory);
-            indexer.setTermIndexWriter(termIndexWriter);
-            indexer.parseXmlDump(String.join(File.separator, "D:", "Downloads","nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
+            try (TermIndexWriter termIndexWriter = new TermIndexWriter(analyzer, directory)) {
+                indexer.setTermIndexWriter(termIndexWriter);
+                indexer.parseXmlDump(String.join(File.separator, "D:", "Downloads","nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
+            }
         }
     }
 }
+####
+
+Een index van alle wikipedia-artikels alleen is genoeg om te verifiëren of termen/teksten semantisch aan elkaar verwant zijn.
+
+Om actief naar termen te zoeken die verwant zijn aan verschillende andere termen, is er nog een beetje meer werk nodig dan maken van de term-concept-index,
+nl. een concept-term index. De concept-term index mag ook frasen bevatten, ipv enkel termen.
+
+Om de concept-term-index op te bouwen:
+- overloop alle termen/frasen
+- Zoek de concepten die erbij passen. Cutoff op similarity of top n of ???
+- Maak een document met term als titel/id en de gevonden concepten als tokens.
+
+Om van een term naar gerelateerde termen te gaan:
+- zoek term in de term-concept index ==> concepten
+- zoek concept in de concept-term index ==> andere termen
+- Geef als score aan de gevonden termen de score van term-concept search maal score uit concept-term search.
+- Eventueel de scores normaliseren, maar uiteindelijk is toch vooral de volgorde van belang.
+

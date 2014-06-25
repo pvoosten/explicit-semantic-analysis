@@ -83,6 +83,7 @@ public final class NlwikiAnalyzer extends Analyzer {
    * Builds an analyzer with the default stop words ({@link #getDefaultStopSet()}) 
    * and a few default entries for the stem exclusion table.
    * 
+   * @param matchVersion
    */
   public NlwikiAnalyzer(Version matchVersion) {
     // historically, only this ctor populated the stem dict!!!!!

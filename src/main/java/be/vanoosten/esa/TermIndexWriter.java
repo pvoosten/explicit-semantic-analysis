@@ -22,7 +22,7 @@ import org.apache.lucene.util.Version;
  * 
  * @author pvoosten
  */
-public class TermIndexWriter {
+public class TermIndexWriter implements AutoCloseable{
         
     public static final String TEXT_FIELD = "text";
     public static final String TITLE_FIELD = "title";
@@ -40,5 +40,10 @@ public class TermIndexWriter {
         Analyzer analyzer = indexWriter.getAnalyzer();
         doc.add(new TextField(TEXT_FIELD, wikiText, Field.Store.NO));
         indexWriter.addDocument(doc);
+    }
+
+    @Override
+    public void close() throws IOException {
+        indexWriter.close();
     }
 }
