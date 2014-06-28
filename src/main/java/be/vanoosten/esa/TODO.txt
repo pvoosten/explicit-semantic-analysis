@@ -1,0 +1,51 @@
+
+Gedaan
+======
+
+nlwiki: index van alle wikipedia-artikels
+
+TODO
+====
+
+Enkel content pages indexeren
+-----------------------------
+Soorten niet te indexeren pages:
+- talk
+- redirect
+- ...
+
+Tool om semantic relatedness tussen 2 teksten te checken
+--------------------------------------------------------
+- search met ene tekst als query
+- search met andere tekst als query
+- cosinus van de zoekresultaten (in 1 taal) is de relatedness
+
+Tool om teksten te clusteren op semantic relatedness
+----------------------------------------------------
+- indexeer de teksten op concept
+- relatedness kan nu realtime bepaald worden ipv telkens biede teksten te zoeken en resultaten te vergelijken met cosinus:
+---> maak query van ene tekst
+---> filter enkel de andere tekst uit zoekresultaten, gebruik search score als relatedness
+
+Tool om actief termen te zoeken gerelateerd aan een gegeven term
+----------------------------------------------------------------
+Om actief naar termen te zoeken die verwant zijn aan verschillende andere termen, is er nog een beetje meer werk nodig dan maken van de term-concept-index,
+nl. een concept-term index. De concept-term index mag ook frasen of n-grammen bevatten, ipv enkel termen.
+
+Om de concept-term-index op te bouwen:
+- overloop alle termen
+- Zoek de concepten die erbij passen. Cutoff op similarity of top n of ???
+- Maak een document met term als titel/id en de gevonden concepten als tokens.
+
+Om van een term naar gerelateerde termen te gaan:
+- zoek term in de term-concept index ==> concepten
+- zoek concept in de concept-term index ==> andere termen
+- Geef als score aan de gevonden termen de score van term-concept search maal score uit concept-term search.
+- Eventueel de scores normaliseren, maar uiteindelijk is toch vooral de volgorde van belang.
+
+Mogelijkheden voor optimalisatie
+--------------------------------
+- de term-concept index tot een index van concepten per n-gram of frase (na chunking)
+- CLESA
+
+

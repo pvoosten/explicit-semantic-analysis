@@ -11,17 +11,30 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.Token;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.nl.DutchAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.SlowCompositeReaderWrapper;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -32,16 +45,54 @@ public class Main {
     
     public static void main(String[] args) throws IOException, ParseException {
         String indexPath = String.join(File.separator, "D:", "Development", "esa", "nlwiki");
-        File indexDirectory = new File(indexPath);
+        File termDocIndexDirectory = new File(indexPath, "termdoc");
+        File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
 
-        // indexing(indexDirectory);
-        searching(indexDirectory);
+        indexing(termDocIndexDirectory);
+        searching(termDocIndexDirectory);
+        createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
     }
     
-    public static void searching(File indexDirectory) throws IOException, ParseException {
+    static void createConceptTermIndex(File termDocIndexDirectory, File conceptTermIndexDirectory) throws IOException{
+        Directory termDocDirectory = FSDirectory.open(termDocIndexDirectory);
+        IndexReader termDocReader = IndexReader.open(termDocDirectory);
+        Fields fds = termDocReader.getTermVectors(100);
+        IndexSearcher docSearcher = new IndexSearcher(termDocReader);
+        Terms terms = SlowCompositeReaderWrapper.wrap(termDocReader).terms(TermIndexWriter.TEXT_FIELD);
+        TermsEnum termsEnum = terms.iterator(TermsEnum.EMPTY);
+        BytesRef bytesRef = termsEnum.term();
+        while(bytesRef != null){
+            Term term = new Term(TermIndexWriter.TEXT_FIELD, bytesRef);
+            Query query = new TermQuery(term);
+            int n = 1000;
+            TopDocs td = docSearcher.search(query, n);
+            if(n<td.totalHits){
+                n = td.totalHits;
+                td = docSearcher.search(query, n);
+            }
+            Document conceptTermDocument = new Document();
+            
+            // add the term field
+            conceptTermDocument.add(new StringField(TermIndexWriter.TEXT_FIELD, bytesRef.utf8ToString(), Field.Store.YES));
+            // add the term
+            # maak een tokenstream die consumer is (met een blocking queue)
+            for(ScoreDoc scoreDoc : td.scoreDocs){
+                Document termDocDocument = termDocReader.document(scoreDoc.doc);
+                String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
+                Token conceptToken = new Token(concept, 0, 10, "CONCEPT");
+                # Voeg hier als producer een token toe aan de tokenstream
+                # eenmaal toegevoegd: tokenstream mag true returnen
+            }
+            # sluit hier de tokenstream af. Aan het einde van blocking queue niet meer wachten, maar false teruggeven.
+            
+            bytesRef = termsEnum.next();
+        }
+    }
+    
+    public static void searching(File termDocIndexDirectory) throws IOException, ParseException {
         ExecutorService executorService = Executors.newFixedThreadPool(8);
         
-        try (IndexReader indexReader = DirectoryReader.open(FSDirectory.open(indexDirectory))) {
+        try (IndexReader indexReader = DirectoryReader.open(FSDirectory.open(termDocIndexDirectory))) {
             IndexSearcher searcher = new IndexSearcher(indexReader, executorService);
             
             Analyzer analyzer = new DutchAnalyzer(Version.LUCENE_48);
@@ -70,8 +121,8 @@ public class Main {
         }
     }
     
-    public static void indexing(File indexDirectory) throws IOException {
-        try (Directory directory = FSDirectory.open(indexDirectory)) {
+    public static void indexing(File termDocIndexDirectory) throws IOException {
+        try (Directory directory = FSDirectory.open(termDocIndexDirectory)) {
             WikiIndexer indexer = new WikiIndexer();
             Analyzer analyzer = new NlwikiAnalyzer();
             try (TermIndexWriter termIndexWriter = new TermIndexWriter(analyzer, directory)) {
@@ -81,21 +132,3 @@ public class Main {
         }
     }
 }
-####
-
-Een index van alle wikipedia-artikels alleen is genoeg om te verifiëren of termen/teksten semantisch aan elkaar verwant zijn.
-
-Om actief naar termen te zoeken die verwant zijn aan verschillende andere termen, is er nog een beetje meer werk nodig dan maken van de term-concept-index,
-nl. een concept-term index. De concept-term index mag ook frasen bevatten, ipv enkel termen.
-
-Om de concept-term-index op te bouwen:
-- overloop alle termen/frasen
-- Zoek de concepten die erbij passen. Cutoff op similarity of top n of ???
-- Maak een document met term als titel/id en de gevonden concepten als tokens.
-
-Om van een term naar gerelateerde termen te gaan:
-- zoek term in de term-concept index ==> concepten
-- zoek concept in de concept-term index ==> andere termen
-- Geef als score aan de gevonden termen de score van term-concept search maal score uit concept-term search.
-- Eventueel de scores normaliseren, maar uiteindelijk is toch vooral de volgorde van belang.
-
