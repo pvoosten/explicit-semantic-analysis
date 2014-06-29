@@ -12,8 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Token;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.nl.DutchAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -75,15 +73,14 @@ public class Main {
             // add the term field
             conceptTermDocument.add(new StringField(TermIndexWriter.TEXT_FIELD, bytesRef.utf8ToString(), Field.Store.YES));
             // add the term
-            # maak een tokenstream die consumer is (met een blocking queue)
+            ProducerConsumerTokenStream pcTokenStream = new ProducerConsumerTokenStream();
             for(ScoreDoc scoreDoc : td.scoreDocs){
                 Document termDocDocument = termDocReader.document(scoreDoc.doc);
                 String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
                 Token conceptToken = new Token(concept, 0, 10, "CONCEPT");
-                # Voeg hier als producer een token toe aan de tokenstream
-                # eenmaal toegevoegd: tokenstream mag true returnen
+                pcTokenStream.produceToken(conceptToken);
             }
-            # sluit hier de tokenstream af. Aan het einde van blocking queue niet meer wachten, maar false teruggeven.
+            pcTokenStream.finishProducingTokens();
             
             bytesRef = termsEnum.next();
         }
