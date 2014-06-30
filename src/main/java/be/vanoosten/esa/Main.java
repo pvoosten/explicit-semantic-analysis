@@ -16,9 +16,12 @@ import org.apache.lucene.analysis.nl.DutchAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SlowCompositeReaderWrapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -30,6 +33,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
@@ -46,44 +50,69 @@ public class Main {
         File termDocIndexDirectory = new File(indexPath, "termdoc");
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
 
-        indexing(termDocIndexDirectory);
-        searching(termDocIndexDirectory);
+        // indexing(termDocIndexDirectory);
+        // searching(termDocIndexDirectory);
         createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
     }
     
     static void createConceptTermIndex(File termDocIndexDirectory, File conceptTermIndexDirectory) throws IOException{
-        Directory termDocDirectory = FSDirectory.open(termDocIndexDirectory);
-        IndexReader termDocReader = IndexReader.open(termDocDirectory);
-        Fields fds = termDocReader.getTermVectors(100);
-        IndexSearcher docSearcher = new IndexSearcher(termDocReader);
-        Terms terms = SlowCompositeReaderWrapper.wrap(termDocReader).terms(TermIndexWriter.TEXT_FIELD);
-        TermsEnum termsEnum = terms.iterator(TermsEnum.EMPTY);
-        BytesRef bytesRef = termsEnum.term();
-        while(bytesRef != null){
-            Term term = new Term(TermIndexWriter.TEXT_FIELD, bytesRef);
-            Query query = new TermQuery(term);
-            int n = 1000;
-            TopDocs td = docSearcher.search(query, n);
-            if(n<td.totalHits){
-                n = td.totalHits;
-                td = docSearcher.search(query, n);
+        ExecutorService es = Executors.newFixedThreadPool(2);
+        
+        final Directory termDocDirectory = FSDirectory.open(termDocIndexDirectory);
+        final IndexReader termDocReader = IndexReader.open(termDocDirectory);
+        final Fields fds = termDocReader.getTermVectors(100);
+        final IndexSearcher docSearcher = new IndexSearcher(termDocReader);
+        
+        final IndexWriterConfig conceptIndexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, null);
+        try (IndexWriter conceptIndexWriter = new IndexWriter(FSDirectory.open(conceptTermIndexDirectory), conceptIndexWriterConfig)) {
+            final Terms terms = SlowCompositeReaderWrapper.wrap(termDocReader).terms(TermIndexWriter.TEXT_FIELD);
+            final TermsEnum termsEnum = terms.iterator(TermsEnum.EMPTY);
+            BytesRef bytesRef = termsEnum.next();
+            while(bytesRef != null){
+                TopDocs td = SearchTerm(bytesRef, docSearcher);
+                
+                es.execute(() -> {
+                    Document conceptTermDocument = new Document();
+                    // add the term field
+                    conceptTermDocument.add(new StringField(TermIndexWriter.TEXT_FIELD, bytesRef.utf8ToString(), Field.Store.YES));
+                    // add the concepts field
+                    ProducerConsumerTokenStream pcTokenStream = new ProducerConsumerTokenStream();
+                    conceptTermDocument.add(new TextField("concept", pcTokenStream));
+                    conceptIndexWriter.addDocument(conceptTermDocument);
+                });
+                // add the concepts to the token stream
+                int i=0;
+                byte[] payloadBytes = new byte[5];
+                ByteArrayDataOutput dataOutput = new ByteArrayDataOutput(payloadBytes);
+                for(ScoreDoc scoreDoc : td.scoreDocs){
+                    Document termDocDocument = termDocReader.document(scoreDoc.doc);
+                    String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
+                    Token conceptToken = new Token(concept, i*10, (i+1)*10, "CONCEPT");
+                    // set similarity score as payload
+                    int integerScore = (int) (scoreDoc.score * 1000);
+                    dataOutput.reset(payloadBytes);
+                    dataOutput.writeVInt(integerScore);
+                    BytesRef payloadBytesRef = new BytesRef(payloadBytes, 0, dataOutput.getPosition());
+                    conceptToken.setPayload(payloadBytesRef);
+                    pcTokenStream.produceToken(conceptToken);
+                }
+                pcTokenStream.finishProducingTokens();
+                
+                bytesRef = termsEnum.next();
             }
-            Document conceptTermDocument = new Document();
-            
-            // add the term field
-            conceptTermDocument.add(new StringField(TermIndexWriter.TEXT_FIELD, bytesRef.utf8ToString(), Field.Store.YES));
-            // add the term
-            ProducerConsumerTokenStream pcTokenStream = new ProducerConsumerTokenStream();
-            for(ScoreDoc scoreDoc : td.scoreDocs){
-                Document termDocDocument = termDocReader.document(scoreDoc.doc);
-                String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
-                Token conceptToken = new Token(concept, 0, 10, "CONCEPT");
-                pcTokenStream.produceToken(conceptToken);
-            }
-            pcTokenStream.finishProducingTokens();
-            
-            bytesRef = termsEnum.next();
         }
+    }
+
+    private static TopDocs SearchTerm(BytesRef bytesRef, IndexSearcher docSearcher) throws IOException {
+        Term term = new Term(TermIndexWriter.TEXT_FIELD, bytesRef);
+        Query query = new TermQuery(term);
+        int n = 1000;
+        TopDocs td = docSearcher.search(query, n);
+        if (n < td.totalHits) {
+            n = td.totalHits;
+            td = docSearcher.search(query, n);
+        }
+        return td;
     }
     
     public static void searching(File termDocIndexDirectory) throws IOException, ParseException {

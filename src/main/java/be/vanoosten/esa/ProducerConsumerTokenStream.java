@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
+import org.apache.lucene.store.ByteArrayDataOutput;
 
 /**
  *
@@ -24,6 +26,7 @@ class ProducerConsumerTokenStream extends TokenStream{
     private final BlockingQueue<Token> queue;
     
     private final CharTermAttribute  termAtt = addAttribute(CharTermAttribute.class);
+    private final PayloadAttribute payloadAtt = addAttribute(PayloadAttribute.class);
 
     ProducerConsumerTokenStream() {
         this.queue = new LinkedBlockingQueue<>();
@@ -49,7 +52,8 @@ class ProducerConsumerTokenStream extends TokenStream{
                 char[] buffer = termAtt.buffer();
                 System.arraycopy(token.buffer(), 0, buffer, 0, token.length());
                 termAtt.setLength(token.length());
-                #error verwerk het token volledig, zoals nodig.
+                ByteArrayDataOutput dataOutput = new ByteArrayDataOutput();
+                payloadAtt.setPayload(token.getPayload());
             }
             return token != null;
         } catch (InterruptedException e) {
