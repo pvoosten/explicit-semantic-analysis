@@ -1,9 +1,8 @@
 /*
-* To change this license header, choose License Headers in Project Properties.
-* To change this template file, choose Tools | Templates
-* and open the template in the editor.
-*/
-
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package be.vanoosten.esa;
 
 import java.io.BufferedInputStream;
@@ -27,7 +26,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * @author user
  */
 public class WikiIndexer extends DefaultHandler {
-    
+
     private final SAXParserFactory saxFactory;
     private boolean inPage;
     private boolean inPageTitle;
@@ -36,23 +35,23 @@ public class WikiIndexer extends DefaultHandler {
     private TermIndexWriter termIndexWriter;
     private String wikiTitle;
     private int numIndexed = 0;
-    
+
     public WikiIndexer() {
         saxFactory = SAXParserFactory.newInstance();
         saxFactory.setNamespaceAware(true);
         saxFactory.setValidating(true);
         saxFactory.setXIncludeAware(true);
     }
-    
-    public void setTermIndexWriter(TermIndexWriter termIndexWriter){
+
+    public void setTermIndexWriter(TermIndexWriter termIndexWriter) {
         this.termIndexWriter = termIndexWriter;
     }
-    
-    public void parseXmlDump(String path){
+
+    public void parseXmlDump(String path) {
         parseXmlDump(new File(path));
     }
-    
-    public void parseXmlDump(File file){
+
+    public void parseXmlDump(File file) {
         try {
             SAXParser saxParser = saxFactory.newSAXParser();
             InputStream wikiInputStream = new FileInputStream(file);
@@ -64,42 +63,44 @@ public class WikiIndexer extends DefaultHandler {
         } catch (IOException ex) {
             Logger.getLogger(WikiIndexer.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }    
-    
+    }
+
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
-        if("page".equals(localName)){
+        if ("page".equals(localName)) {
             inPage = true;
-        }else if(inPage && "title".equals(localName)){
+        } else if (inPage && "title".equals(localName)) {
             inPageTitle = true;
             content = new StringBuilder();
-        }else if(inPage && "text".equals(localName)){
+        } else if (inPage && "text".equals(localName)) {
             inPageText = true;
             content = new StringBuilder();
         }
     }
-    
+
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        if(inPage && inPageTitle && "title".equals(localName)){
+        if (inPage && inPageTitle && "title".equals(localName)) {
             inPageTitle = false;
             wikiTitle = content.toString();
-        }else if(inPage && inPageText && "text".equals(localName)){
-                inPageText = false;
-                String wikiText = content.toString();
+        } else if (inPage && inPageText && "text".equals(localName)) {
+            inPageText = false;
+            String wikiText = content.toString();
             try {
-                termIndexWriter.index(wikiTitle, wikiText);
-                numIndexed++;
-                if(numIndexed%1000==0)
-                    System.out.println(numIndexed);
+                if (termIndexWriter.index(wikiTitle, wikiText)) {
+                    numIndexed++;
+                    if (numIndexed % 1000 == 0) {
+                        System.out.println("" + numIndexed + "\t" + wikiTitle);
+                    }
+                }
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
-        }else if(inPage && "page".equals(localName)){
+        } else if (inPage && "page".equals(localName)) {
             inPage = false;
         }
     }
-    
+
     @Override
     public void characters(char[] ch, int start, int length) throws SAXException {
         content.append(ch, start, length);

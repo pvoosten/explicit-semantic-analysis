@@ -4,10 +4,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
-import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOverrideMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
@@ -39,7 +37,6 @@ public final class NlwikiAnalyzer extends Analyzer {
   
   private static class DefaultSetHolder {
     static final CharArraySet DEFAULT_STOP_SET;
-    static final CharArrayMap<String> DEFAULT_STEM_DICT;
     static {
       try {
         DEFAULT_STOP_SET = WordlistLoader.getSnowballWordSet(IOUtils.getDecodingReader(SnowballFilter.class, 
@@ -49,13 +46,7 @@ public final class NlwikiAnalyzer extends Analyzer {
         // distribution (JAR)
         throw new RuntimeException("Unable to load default stopword set");
       }
-      
-      DEFAULT_STEM_DICT = new CharArrayMap<>(Version.LUCENE_CURRENT, 4, false);
-      DEFAULT_STEM_DICT.put("fiets", "fiets"); //otherwise fiet
-      DEFAULT_STEM_DICT.put("bromfiets", "bromfiets"); //otherwise bromfiet
-      DEFAULT_STEM_DICT.put("ei", "eier");
-      DEFAULT_STEM_DICT.put("kind", "kinder");
-    }
+     }
   }
 
 
@@ -64,15 +55,7 @@ public final class NlwikiAnalyzer extends Analyzer {
    */
   private final CharArraySet stoptable;
 
-  /**
-   * Contains words that should be indexed but not stemmed.
-   */
-  private CharArraySet excltable = CharArraySet.EMPTY_SET;
-
-  private final StemmerOverrideMap stemdict;
-
   // null if on 3.1 or later - only for bw compat
-  private final CharArrayMap<String> origStemdict;
   private final Version matchVersion;
 
   public NlwikiAnalyzer(){
@@ -80,58 +63,17 @@ public final class NlwikiAnalyzer extends Analyzer {
   }
   
   /**
-   * Builds an analyzer with the default stop words ({@link #getDefaultStopSet()}) 
-   * and a few default entries for the stem exclusion table.
+   * Builds an analyzer with the default stop words ({@link #getDefaultStopSet()}).
    * 
    * @param matchVersion
    */
   public NlwikiAnalyzer(Version matchVersion) {
-    // historically, only this ctor populated the stem dict!!!!!
-    this(matchVersion, DefaultSetHolder.DEFAULT_STOP_SET, CharArraySet.EMPTY_SET, DefaultSetHolder.DEFAULT_STEM_DICT);
+    this(matchVersion, DefaultSetHolder.DEFAULT_STOP_SET);
   }
-  
-  public NlwikiAnalyzer(Version matchVersion, CharArraySet stopwords){
-    // historically, this ctor never the stem dict!!!!!
-    // so we populate it only for >= 3.6
-    this(matchVersion, stopwords, CharArraySet.EMPTY_SET, 
-        matchVersion.onOrAfter(Version.LUCENE_36) 
-        ? DefaultSetHolder.DEFAULT_STEM_DICT 
-        : CharArrayMap.<String>emptyMap());
-  }
-  
-  public NlwikiAnalyzer(Version matchVersion, CharArraySet stopwords, CharArraySet stemExclusionTable){
-    // historically, this ctor never the stem dict!!!!!
-    // so we populate it only for >= 3.6
-    this(matchVersion, stopwords, stemExclusionTable,
-        matchVersion.onOrAfter(Version.LUCENE_36)
-        ? DefaultSetHolder.DEFAULT_STEM_DICT
-        : CharArrayMap.<String>emptyMap());
-  }
-  
-  public NlwikiAnalyzer(Version matchVersion, CharArraySet stopwords, CharArraySet stemExclusionTable, CharArrayMap<String> stemOverrideDict) {
+      
+  public NlwikiAnalyzer(Version matchVersion, CharArraySet stopwords) {
     this.matchVersion = matchVersion;
     this.stoptable = CharArraySet.unmodifiableSet(CharArraySet.copy(matchVersion, stopwords));
-    this.excltable = CharArraySet.unmodifiableSet(CharArraySet.copy(matchVersion, stemExclusionTable));
-    if (stemOverrideDict.isEmpty() || !matchVersion.onOrAfter(Version.LUCENE_31)) {
-      this.stemdict = null;
-      this.origStemdict = CharArrayMap.unmodifiableMap(CharArrayMap.copy(matchVersion, stemOverrideDict));
-    } else {
-      this.origStemdict = null;
-      // we don't need to ignore case here since we lowercase in this analyzer anyway
-      StemmerOverrideFilter.Builder builder = new StemmerOverrideFilter.Builder(false);
-      CharArrayMap<String>.EntryIterator iter = stemOverrideDict.entrySet().iterator();
-      CharsRef spare = new CharsRef();
-      while (iter.hasNext()) {
-        char[] nextKey = iter.nextKey();
-        spare.copyChars(nextKey, 0, nextKey.length);
-        builder.add(spare, iter.currentValue());
-      }
-      try {
-        this.stemdict = builder.build();
-      } catch (IOException ex) {
-        throw new RuntimeException("can not build stem dict", ex);
-      }
-    }
   }
   
   /**
@@ -140,8 +82,7 @@ public final class NlwikiAnalyzer extends Analyzer {
    *
    * @return A {@link TokenStream} built from a {@link StandardTokenizer}
    *   filtered with {@link StandardFilter}, {@link LowerCaseFilter}, 
-   *   {@link StopFilter}, {@link SetKeywordMarkerFilter} if a stem exclusion set is provided,
-   *   {@link StemmerOverrideFilter}, and {@link SnowballFilter}
+   *   {@link StopFilter}
    */
   @Override
   protected Analyzer.TokenStreamComponents createComponents(String fieldName, Reader aReader) {
@@ -149,11 +90,6 @@ public final class NlwikiAnalyzer extends Analyzer {
       TokenStream result = new StandardFilter(matchVersion, source);
       result = new LowerCaseFilter(matchVersion, result);
       result = new StopFilter(matchVersion, result, stoptable);
-      if (!excltable.isEmpty())
-        result = new SetKeywordMarkerFilter(result, excltable);
-      if (stemdict != null)
-        result = new StemmerOverrideFilter(result, stemdict);
-      result = new SnowballFilter(result, new org.tartarus.snowball.ext.DutchStemmer());
       return new Analyzer.TokenStreamComponents(source, result);
   }
 }

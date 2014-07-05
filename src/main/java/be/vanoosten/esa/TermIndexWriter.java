@@ -7,6 +7,8 @@
 package be.vanoosten.esa;
 
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -26,20 +28,28 @@ public class TermIndexWriter implements AutoCloseable{
         
     public static final String TEXT_FIELD = "text";
     public static final String TITLE_FIELD = "title";
+    Pattern pat;
 
     IndexWriter indexWriter;
     
     public TermIndexWriter(Analyzer analyzer, Directory directory) throws IOException{
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, analyzer);
         indexWriter = new IndexWriter(directory, indexWriterConfig);
+        String regex = "^[a-zA-z]+:.*";
+        pat = Pattern.compile(regex);
     }
     
-    void index(String title, String wikiText) throws IOException{
+    boolean index(String title, String wikiText) throws IOException{
+        Matcher matcher = pat.matcher(title);
+        if(matcher.find() || title.startsWith("Lijst van ") || wikiText.length() < 1000){
+            return false;
+        }
         Document doc = new Document();
         doc.add(new StoredField(TITLE_FIELD, title));
         Analyzer analyzer = indexWriter.getAnalyzer();
         doc.add(new TextField(TEXT_FIELD, wikiText, Field.Store.NO));
         indexWriter.addDocument(doc);
+        return true;
     }
 
     @Override
