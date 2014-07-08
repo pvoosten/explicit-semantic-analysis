@@ -12,7 +12,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Token;
+import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.nl.DutchAnalyzer;
+import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -49,27 +51,36 @@ import org.apache.lucene.util.Version;
 public class Main {
 
     public static void main(String[] args) throws IOException, ParseException {
+        /*
         String indexPath = String.join(File.separator, "D:", "Development", "esa", "nlwiki");
+        File wikipediaDumpFile = new File(String.join(File.separator, "D:", "Downloads", "nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
+        String startTokens = "geheim anoniem auteur verhalen lezen schrijven wetenschappelijk artikel peer review";
+        */
+        String indexPath = String.join(File.separator, "D:", "Development", "esa", "enwiki");
+        File wikipediaDumpFile = new File(indexPath, String.join(File.separator, "dump", "enwiki-20140614-pages-articles-multistream.xml.bz2"));
+        String startTokens = "secret anonymous author stories read write scientific article peer review";
+        CharArraySet stopWords = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
+
         File termDocIndexDirectory = new File(indexPath, "termdoc");
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
-
-        // indexing(termDocIndexDirectory);
-        // searching(termDocIndexDirectory);
-        // createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
-        for (String queryText : "geheim anoniem auteur verhalen lezen schrijven wetenschappelijk artikel peer review".split(" ")) {
-            findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText);
+                
+        indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
+        searching(termDocIndexDirectory);
+        createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
+        for (String queryText : startTokens.split(" ")) {
+            findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
             System.out.println("");
         }
     }
 
-    static void findRelatedTerms(File termDocIndexDirectory, File conceptTermIndexDirectory, String queryText) throws IOException, ParseException {
+    static void findRelatedTerms(File termDocIndexDirectory, File conceptTermIndexDirectory, String queryText, CharArraySet stopWords) throws IOException, ParseException {
         try (
                 Directory conceptIndex = FSDirectory.open(termDocIndexDirectory);
                 IndexReader conceptIndexReader = DirectoryReader.open(conceptIndex);
                 Directory relatedTermsIndex = FSDirectory.open(conceptTermIndexDirectory);
                 IndexReader relatedTermsIndexReader = DirectoryReader.open(relatedTermsIndex);) {
             IndexSearcher conceptSearcher = new IndexSearcher(conceptIndexReader);
-            Analyzer analyzer = new NlwikiAnalyzer(Version.LUCENE_48);
+            Analyzer analyzer = new WikiAnalyzer(Version.LUCENE_48, stopWords);
             QueryParser conceptQueryParser = new QueryParser(Version.LUCENE_48, TermIndexWriter.TEXT_FIELD, analyzer);
 
             IndexSearcher relatedTermsSearcher = new IndexSearcher(relatedTermsIndexReader);
@@ -197,13 +208,13 @@ public class Main {
         }
     }
 
-    public static void indexing(File termDocIndexDirectory) throws IOException {
+    public static void indexing(File termDocIndexDirectory, File wikipediaDumpFile, CharArraySet stopWords) throws IOException {
         try (Directory directory = FSDirectory.open(termDocIndexDirectory)) {
             WikiIndexer indexer = new WikiIndexer();
-            Analyzer analyzer = new NlwikiAnalyzer();
+            Analyzer analyzer = new WikiAnalyzer(Version.LUCENE_48, stopWords);
             try (TermIndexWriter termIndexWriter = new TermIndexWriter(analyzer, directory)) {
                 indexer.setTermIndexWriter(termIndexWriter);
-                indexer.parseXmlDump(String.join(File.separator, "D:", "Downloads", "nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
+                indexer.parseXmlDump(wikipediaDumpFile);
             }
         }
     }
