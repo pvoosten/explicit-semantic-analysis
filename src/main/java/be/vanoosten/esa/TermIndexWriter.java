@@ -32,16 +32,35 @@ public class TermIndexWriter implements AutoCloseable{
 
     IndexWriter indexWriter;
     
+    int minimumArticleLength;
+
+    /**
+     * Gets the minimum length of an article in characters that should be indexed.
+     * @return
+     */
+    public int getMinimumArticleLength(){
+        return minimumArticleLength;
+    }
+
+    /**
+     * Sets the minimum length of an article in characters for it to be indexed.
+     * @param minimumArticleLength
+     */
+    public final void setMinimumArticleLength(int minimumArticleLength){
+        this.minimumArticleLength = minimumArticleLength;
+    }
+    
     public TermIndexWriter(Analyzer analyzer, Directory directory) throws IOException{
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, analyzer);
         indexWriter = new IndexWriter(directory, indexWriterConfig);
         String regex = "^[a-zA-z]+:.*";
         pat = Pattern.compile(regex);
+        setMinimumArticleLength(2000);
     }
     
     boolean index(String title, String wikiText) throws IOException{
         Matcher matcher = pat.matcher(title);
-        if(matcher.find() || title.startsWith("Lijst van ") || wikiText.length() < 1000){
+        if(matcher.find() || title.startsWith("Lijst van ") || wikiText.length() < getMinimumArticleLength()){
             return false;
         }
         Document doc = new Document();

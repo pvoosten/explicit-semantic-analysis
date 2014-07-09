@@ -122,13 +122,13 @@ public class Main {
                 BytesRef bytesRef;
                 while ((bytesRef = termsEnum.next()) != null) {
                     String termString = bytesRef.utf8ToString();
-                    if (termString.matches("^[a-zA-Z]+:/.*$")) {
+                    if (termString.matches("^[a-zA-Z]+:/.*$") || termString.matches("^\\d+$")) {
                         continue;
                     }
                     if (termString.charAt(0) >= '0' && termString.charAt(0) <= '9') {
                         continue;
                     }
-                    if (termString.startsWith("http://")) {
+                    if (termString.contains(".") || termString.contains("_")) {
                         continue;
                     }
                     if (t++ == 1000) {
@@ -138,16 +138,24 @@ public class Main {
                     TopDocs td = SearchTerm(bytesRef, docSearcher);
 
                     // add the concepts to the token stream
-                    int i = 0;
                     byte[] payloadBytes = new byte[5];
                     ByteArrayDataOutput dataOutput = new ByteArrayDataOutput(payloadBytes);
                     ProducerConsumerTokenStream pcTokenStream = new ProducerConsumerTokenStream();
-                    for (ScoreDoc scoreDoc : td.scoreDocs) {
+                    double norm = ConceptSimilarity.SIMILARITY_FACTOR;
+                    int last = 0;
+                    for(ScoreDoc scoreDoc : td.scoreDocs){
+                        if(scoreDoc.score/norm < ConceptSimilarity.SIMILARITY_FACTOR ||
+                                last>= 1.0f / ConceptSimilarity.SIMILARITY_FACTOR) break;
+                        norm += scoreDoc.score * scoreDoc.score;
+                        last++;
+                    }
+                    for (int i=0; i<last; i++) {
+                        ScoreDoc scoreDoc = td.scoreDocs[i];
                         Document termDocDocument = termDocReader.document(scoreDoc.doc);
                         String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
                         Token conceptToken = new Token(concept, i * 10, (i + 1) * 10, "CONCEPT");
                         // set similarity score as payload
-                        int integerScore = (int) (scoreDoc.score * 1000);
+                        int integerScore = (int) ((scoreDoc.score/norm)/ConceptSimilarity.SIMILARITY_FACTOR);
                         dataOutput.reset(payloadBytes);
                         dataOutput.writeVInt(integerScore);
                         BytesRef payloadBytesRef = new BytesRef(payloadBytes, 0, dataOutput.getPosition());

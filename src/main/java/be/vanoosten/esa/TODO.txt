@@ -12,6 +12,10 @@ Actief zoeken naar connecties tussen termen
     tot er termen gevonden worden die voor de andere startterm ook in de tweede, derde, ... graad voorkomen.
 ==> Begin misschien met opbouwen van een graaf en snoei alle leaves voor visualisatie.
 
+Indexeer genormeerde tokens
+---------------------------
+Nu geen genormeerde conceptvectoren, dus eigenlijk geen cosine-similarity.
+De nadruk ligt dus te veel op woorden met hoge IDF.
 
 Tool om semantic relatedness tussen 2 teksten te checken
 --------------------------------------------------------

@@ -35,6 +35,7 @@ public class WikiIndexer extends DefaultHandler {
     private TermIndexWriter termIndexWriter;
     private String wikiTitle;
     private int numIndexed = 0;
+    private int numTotal = 0;
 
     public WikiIndexer() {
         saxFactory = SAXParserFactory.newInstance();
@@ -87,10 +88,11 @@ public class WikiIndexer extends DefaultHandler {
             inPageText = false;
             String wikiText = content.toString();
             try {
+                numTotal++;
                 if (termIndexWriter.index(wikiTitle, wikiText)) {
                     numIndexed++;
                     if (numIndexed % 1000 == 0) {
-                        System.out.println("" + numIndexed + "\t" + wikiTitle);
+                        System.out.println("" + numIndexed + "\t/ " + numTotal + "\t" + wikiTitle);
                     }
                 }
             } catch (IOException ex) {

@@ -16,6 +16,8 @@ import org.apache.lucene.util.BytesRef;
  * @author user
  */
 public class ConceptSimilarity extends TFIDFSimilarity{
+    
+    public static final float SIMILARITY_FACTOR = 0.00001f;
 
     private final ByteArrayDataInput dataInput = new ByteArrayDataInput();
 
@@ -63,7 +65,7 @@ public class ConceptSimilarity extends TFIDFSimilarity{
     public float scorePayload(int doc, int start, int end, BytesRef payload) {
         synchronized(dataInput){
             dataInput.reset(payload.bytes);
-            return 0.001f* dataInput.readVInt();
+            return SIMILARITY_FACTOR* dataInput.readVInt();
         }
     }
 }
