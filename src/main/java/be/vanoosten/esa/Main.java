@@ -63,7 +63,7 @@ public class Main {
 
         File termDocIndexDirectory = new File(indexPath, "termdoc");
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
-                
+
         indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
         searching(termDocIndexDirectory);
         createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
