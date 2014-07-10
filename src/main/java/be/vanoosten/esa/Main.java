@@ -64,12 +64,12 @@ public class Main {
         File termDocIndexDirectory = new File(indexPath, "termdoc");
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
 
-        indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
-        createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
-        for (String queryText : startTokens.split(" ")) {
-            findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
-            System.out.println("");
-        }
+        // indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
+        // createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
+        // for (String queryText : startTokens.split(" ")) {
+        //     findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
+        //     System.out.println("");
+        // }
     }
 
     static void findRelatedTerms(File termDocIndexDirectory, File conceptTermIndexDirectory, String queryText, CharArraySet stopWords) throws IOException, ParseException {

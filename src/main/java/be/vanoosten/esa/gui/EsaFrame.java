@@ -28,6 +28,7 @@ public class EsaFrame extends javax.swing.JFrame {
      */
     public EsaFrame() {
         initComponents();
+        setConfiguration(new EsaViewModel());
     }
 
     /**
