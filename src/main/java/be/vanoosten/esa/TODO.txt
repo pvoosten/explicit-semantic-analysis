@@ -10,14 +10,15 @@ Actief zoeken naar connecties tussen termen
 --- in 1 stap: verlaag gradueel de vereise similarity
 --- in meerdere stappen: zoek in de tweede graad, derde graad, ... 
     tot er termen gevonden worden die voor de andere startterm ook in de tweede, derde, ... graad voorkomen.
-==> Begin misschien met opbouwen van een graaf en snoei alle leaves voor visualisatie.
+==> Opbouwen van een graaf. Verwijder alle knopen met graad 1, en opnieuw tot er geen meer zijn.
 
+Maak van de methode Main.createConceptTermIndex de klasse ConceptVectorIndexer
+==============================================================================
+Indexeer willekeurige teksten mbv Vectorizer
+Indexeer alle tokens in de wiki-index
+...
+Maak een package voor wiki-indexen be.vanoosten.esa.wiki en een voor semantische indexen: be.vanoosten.esa.concepts
 
-Tool om semantic relatedness tussen 2 teksten te checken
---------------------------------------------------------
-- search met ene tekst als query
-- search met andere tekst als query
-- cosinus van de zoekresultaten (in 1 taal) is de relatedness
 
 Tool om teksten te clusteren op semantic relatedness
 ----------------------------------------------------

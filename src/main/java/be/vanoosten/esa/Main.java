@@ -5,7 +5,6 @@
  */
 package be.vanoosten.esa;
 
-import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
 import static be.vanoosten.esa.WikiIndexer.TITLE_FIELD;
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +14,6 @@ import java.util.concurrent.Executors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.core.StopAnalyzer;
-import org.apache.lucene.analysis.nl.DutchAnalyzer;
 import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -67,7 +65,6 @@ public class Main {
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
 
         indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
-        searching(termDocIndexDirectory);
         createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
         for (String queryText : startTokens.split(" ")) {
             findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
@@ -185,27 +182,6 @@ public class Main {
             td = docSearcher.search(query, n);
         }
         return td;
-    }
-
-    public static void searching(File termDocIndexDirectory) throws IOException, ParseException {
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
-
-        try (IndexReader indexReader = DirectoryReader.open(FSDirectory.open(termDocIndexDirectory))) {
-            IndexSearcher searcher = new IndexSearcher(indexReader, executorService);
-
-            Analyzer analyzer = new DutchAnalyzer(LUCENE_48);
-            QueryParser parser = new QueryParser(LUCENE_48, TEXT_FIELD, analyzer);
-
-            // searchForQuery(parser, searcher, "anoniem", indexReader);
-            // searchForQuery(parser, searcher, "verborgen kennis", indexReader);
-            // searchForQuery(parser, searcher, "korte verhalen kortverhalen", indexReader);
-            // searchForQuery(parser, searcher, "essentie van verhalen", indexReader);
-            // searchForQuery(parser, searcher, "wijsheid", indexReader);
-            searchForQuery(parser, searcher, "wezenlijkheid -potter -smurf -\"lijst van\"", indexReader);
-            searchForQuery(parser, searcher, "verborgen verleden", indexReader);
-            searchForQuery(parser, searcher, "verborgen verhalen", indexReader);
-            searchForQuery(parser, searcher, "levenswijsheid vermogen en wijsheid -sirach", indexReader);
-        }
     }
 
     private static void searchForQuery(final QueryParser parser, final IndexSearcher searcher, final String queryString, final IndexReader indexReader) throws ParseException, IOException {
