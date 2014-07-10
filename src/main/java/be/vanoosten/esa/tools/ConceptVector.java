@@ -3,8 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package be.vanoosten.esa;
+package be.vanoosten.esa.tools;
 
+import be.vanoosten.esa.WikiIndexer;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +28,7 @@ public class ConceptVector {
         conceptWeights = new HashMap<>();
         for (ScoreDoc scoreDoc : td.scoreDocs) {
             norm += scoreDoc.score * scoreDoc.score;
-            String concept = indexReader.document(scoreDoc.doc).get(TermIndexWriter.TITLE_FIELD);
+            String concept = indexReader.document(scoreDoc.doc).get(WikiIndexer.TITLE_FIELD);
             conceptWeights.put(concept, scoreDoc.score);
         }
         for (String concept : conceptWeights.keySet()) {

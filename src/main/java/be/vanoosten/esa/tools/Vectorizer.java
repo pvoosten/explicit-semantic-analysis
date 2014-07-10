@@ -4,8 +4,10 @@
  * and open the template in the editor.
  */
 
-package be.vanoosten.esa;
+package be.vanoosten.esa.tools;
 
+import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
+import static org.apache.lucene.util.Version.LUCENE_48;
 import java.io.File;
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
@@ -18,7 +20,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 
 /**
  * Can present text as a vector of weighted concepts.
@@ -43,7 +44,7 @@ public class Vectorizer implements AutoCloseable{
         termToConceptDirectory = FSDirectory.open(termConceptDirectory);
         indexReader = DirectoryReader.open(termToConceptDirectory);
         searcher = new IndexSearcher(indexReader);
-        queryParser = new QueryParser(Version.LUCENE_48, TermIndexWriter.TEXT_FIELD, analyzer);
+        queryParser = new QueryParser(LUCENE_48, TEXT_FIELD, analyzer);
     }
     
     public ConceptVector vectorize(String text) throws ParseException, IOException{
@@ -60,9 +61,4 @@ public class Vectorizer implements AutoCloseable{
         indexReader.close();
         termToConceptDirectory.close();
     }
-    
-    
-    
-    
-    
 }

@@ -5,6 +5,8 @@
  */
 package be.vanoosten.esa;
 
+import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
+import static be.vanoosten.esa.WikiIndexer.TITLE_FIELD;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
@@ -42,7 +44,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Version;
+import static org.apache.lucene.util.Version.LUCENE_48;
 
 /**
  *
@@ -80,8 +82,8 @@ public class Main {
                 Directory relatedTermsIndex = FSDirectory.open(conceptTermIndexDirectory);
                 IndexReader relatedTermsIndexReader = DirectoryReader.open(relatedTermsIndex);) {
             IndexSearcher conceptSearcher = new IndexSearcher(conceptIndexReader);
-            Analyzer analyzer = new WikiAnalyzer(Version.LUCENE_48, stopWords);
-            QueryParser conceptQueryParser = new QueryParser(Version.LUCENE_48, TermIndexWriter.TEXT_FIELD, analyzer);
+            Analyzer analyzer = new WikiAnalyzer(LUCENE_48, stopWords);
+            QueryParser conceptQueryParser = new QueryParser(LUCENE_48, WikiIndexer.TEXT_FIELD, analyzer);
 
             IndexSearcher relatedTermsSearcher = new IndexSearcher(relatedTermsIndexReader);
 
@@ -90,7 +92,7 @@ public class Main {
             BooleanQuery relatedTermsQuery = new BooleanQuery();
             TopDocs topDocs = conceptSearcher.search(conceptQuery, 100);
             for (ScoreDoc sd : topDocs.scoreDocs) {
-                String concept = conceptIndexReader.document(sd.doc).get(TermIndexWriter.TITLE_FIELD);
+                String concept = conceptIndexReader.document(sd.doc).get(WikiIndexer.TITLE_FIELD);
                 TermQuery conceptAsTermQuery = new TermQuery(new Term("concept", concept));
                 conceptAsTermQuery.setBoost(sd.score);
                 relatedTermsQuery.add(conceptAsTermQuery, Occur.SHOULD);
@@ -98,7 +100,7 @@ public class Main {
             TopDocs topTerms = relatedTermsSearcher.search(relatedTermsQuery, 20);
             // System.out.println("A total of " + topTerms.totalHits + " related terms found.");
             for (ScoreDoc sd : topTerms.scoreDocs) {
-                String term = relatedTermsIndexReader.document(sd.doc).get(TermIndexWriter.TEXT_FIELD);
+                String term = relatedTermsIndexReader.document(sd.doc).get(WikiIndexer.TEXT_FIELD);
                 System.out.println(String.format(Locale.US, "%s -- %s [label=%.3f];", queryText, term, sd.score));
             }
         }
@@ -113,10 +115,10 @@ public class Main {
 
         Fields fields = MultiFields.getFields(termDocReader);
         if (fields != null) {
-            Terms terms = fields.terms(TermIndexWriter.TEXT_FIELD);
+            Terms terms = fields.terms(WikiIndexer.TEXT_FIELD);
             TermsEnum termsEnum = terms.iterator(null);
 
-            final IndexWriterConfig conceptIndexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, null);
+            final IndexWriterConfig conceptIndexWriterConfig = new IndexWriterConfig(LUCENE_48, null);
             try (IndexWriter conceptIndexWriter = new IndexWriter(FSDirectory.open(conceptTermIndexDirectory), conceptIndexWriterConfig)) {
                 int t = 0;
                 BytesRef bytesRef;
@@ -140,7 +142,7 @@ public class Main {
                     // add the concepts to the token stream
                     byte[] payloadBytes = new byte[5];
                     ByteArrayDataOutput dataOutput = new ByteArrayDataOutput(payloadBytes);
-                    ProducerConsumerTokenStream pcTokenStream = new ProducerConsumerTokenStream();
+                    CachingTokenStream pcTokenStream = new CachingTokenStream();
                     double norm = ConceptSimilarity.SIMILARITY_FACTOR;
                     int last = 0;
                     for(ScoreDoc scoreDoc : td.scoreDocs){
@@ -152,7 +154,7 @@ public class Main {
                     for (int i=0; i<last; i++) {
                         ScoreDoc scoreDoc = td.scoreDocs[i];
                         Document termDocDocument = termDocReader.document(scoreDoc.doc);
-                        String concept = termDocDocument.get(TermIndexWriter.TITLE_FIELD);
+                        String concept = termDocDocument.get(WikiIndexer.TITLE_FIELD);
                         Token conceptToken = new Token(concept, i * 10, (i + 1) * 10, "CONCEPT");
                         // set similarity score as payload
                         int integerScore = (int) ((scoreDoc.score/norm)/ConceptSimilarity.SIMILARITY_FACTOR);
@@ -162,11 +164,10 @@ public class Main {
                         conceptToken.setPayload(payloadBytesRef);
                         pcTokenStream.produceToken(conceptToken);
                     }
-                    pcTokenStream.finishProducingTokens();
 
                     Document conceptTermDocument = new Document();
                     AttributeSource attributeSource = termsEnum.attributes();
-                    conceptTermDocument.add(new StringField(TermIndexWriter.TEXT_FIELD, termString, Field.Store.YES));
+                    conceptTermDocument.add(new StringField(WikiIndexer.TEXT_FIELD, termString, Field.Store.YES));
                     conceptTermDocument.add(new TextField("concept", pcTokenStream));
                     conceptIndexWriter.addDocument(conceptTermDocument);
                 }
@@ -175,7 +176,7 @@ public class Main {
     }
 
     private static TopDocs SearchTerm(BytesRef bytesRef, IndexSearcher docSearcher) throws IOException {
-        Term term = new Term(TermIndexWriter.TEXT_FIELD, bytesRef);
+        Term term = new Term(WikiIndexer.TEXT_FIELD, bytesRef);
         Query query = new TermQuery(term);
         int n = 1000;
         TopDocs td = docSearcher.search(query, n);
@@ -192,8 +193,8 @@ public class Main {
         try (IndexReader indexReader = DirectoryReader.open(FSDirectory.open(termDocIndexDirectory))) {
             IndexSearcher searcher = new IndexSearcher(indexReader, executorService);
 
-            Analyzer analyzer = new DutchAnalyzer(Version.LUCENE_48);
-            QueryParser parser = new QueryParser(Version.LUCENE_48, TermIndexWriter.TEXT_FIELD, analyzer);
+            Analyzer analyzer = new DutchAnalyzer(LUCENE_48);
+            QueryParser parser = new QueryParser(LUCENE_48, TEXT_FIELD, analyzer);
 
             // searchForQuery(parser, searcher, "anoniem", indexReader);
             // searchForQuery(parser, searcher, "verborgen kennis", indexReader);
@@ -212,16 +213,14 @@ public class Main {
         TopDocs topDocs = searcher.search(query, 12);
         System.out.println(String.format("%d hits voor \"%s\"", topDocs.totalHits, queryString));
         for (ScoreDoc sd : topDocs.scoreDocs) {
-            System.out.println(String.format("doc %d score %.2f shardIndex %d title \"%s\"", sd.doc, sd.score, sd.shardIndex, indexReader.document(sd.doc).get(TermIndexWriter.TITLE_FIELD)));
+            System.out.println(String.format("doc %d score %.2f shardIndex %d title \"%s\"", sd.doc, sd.score, sd.shardIndex, indexReader.document(sd.doc).get(TITLE_FIELD)));
         }
     }
 
     public static void indexing(File termDocIndexDirectory, File wikipediaDumpFile, CharArraySet stopWords) throws IOException {
         try (Directory directory = FSDirectory.open(termDocIndexDirectory)) {
-            WikiIndexer indexer = new WikiIndexer();
-            Analyzer analyzer = new WikiAnalyzer(Version.LUCENE_48, stopWords);
-            try (TermIndexWriter termIndexWriter = new TermIndexWriter(analyzer, directory)) {
-                indexer.setTermIndexWriter(termIndexWriter);
+            Analyzer analyzer = new WikiAnalyzer(LUCENE_48, stopWords);
+            try(WikiIndexer indexer = new WikiIndexer(analyzer, directory)){
                 indexer.parseXmlDump(wikipediaDumpFile);
             }
         }

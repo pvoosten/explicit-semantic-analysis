@@ -13,10 +13,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Version;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -25,27 +36,55 @@ import org.xml.sax.helpers.DefaultHandler;
  *
  * @author user
  */
-public class WikiIndexer extends DefaultHandler {
+public class WikiIndexer extends DefaultHandler implements AutoCloseable {
 
     private final SAXParserFactory saxFactory;
     private boolean inPage;
     private boolean inPageTitle;
     private boolean inPageText;
     private StringBuilder content = new StringBuilder();
-    private TermIndexWriter termIndexWriter;
     private String wikiTitle;
     private int numIndexed = 0;
     private int numTotal = 0;
 
-    public WikiIndexer() {
+    public static final String TEXT_FIELD = "text";
+    public static final String TITLE_FIELD = "title";
+    Pattern pat;
+
+    IndexWriter indexWriter;
+
+    int minimumArticleLength;
+
+    /**
+     * Gets the minimum length of an article in characters that should be
+     * indexed.
+     *
+     * @return
+     */
+    public int getMinimumArticleLength() {
+        return minimumArticleLength;
+    }
+
+    /**
+     * Sets the minimum length of an article in characters for it to be indexed.
+     *
+     * @param minimumArticleLength
+     */
+    public final void setMinimumArticleLength(int minimumArticleLength) {
+        this.minimumArticleLength = minimumArticleLength;
+    }
+
+    public WikiIndexer(Analyzer analyzer, Directory directory) throws IOException {
         saxFactory = SAXParserFactory.newInstance();
         saxFactory.setNamespaceAware(true);
         saxFactory.setValidating(true);
         saxFactory.setXIncludeAware(true);
-    }
 
-    public void setTermIndexWriter(TermIndexWriter termIndexWriter) {
-        this.termIndexWriter = termIndexWriter;
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, analyzer);
+        indexWriter = new IndexWriter(directory, indexWriterConfig);
+        String regex = "^[a-zA-z]+:.*";
+        pat = Pattern.compile(regex);
+        setMinimumArticleLength(2000);
     }
 
     public void parseXmlDump(String path) {
@@ -89,7 +128,7 @@ public class WikiIndexer extends DefaultHandler {
             String wikiText = content.toString();
             try {
                 numTotal++;
-                if (termIndexWriter.index(wikiTitle, wikiText)) {
+                if (index(wikiTitle, wikiText)) {
                     numIndexed++;
                     if (numIndexed % 1000 == 0) {
                         System.out.println("" + numIndexed + "\t/ " + numTotal + "\t" + wikiTitle);
@@ -107,4 +146,23 @@ public class WikiIndexer extends DefaultHandler {
     public void characters(char[] ch, int start, int length) throws SAXException {
         content.append(ch, start, length);
     }
+
+    boolean index(String title, String wikiText) throws IOException {
+        Matcher matcher = pat.matcher(title);
+        if (matcher.find() || title.startsWith("Lijst van ") || wikiText.length() < getMinimumArticleLength()) {
+            return false;
+        }
+        Document doc = new Document();
+        doc.add(new StoredField(TITLE_FIELD, title));
+        Analyzer analyzer = indexWriter.getAnalyzer();
+        doc.add(new TextField(TEXT_FIELD, wikiText, Field.Store.NO));
+        indexWriter.addDocument(doc);
+        return true;
+    }
+
+    @Override
+    public void close() throws IOException {
+        indexWriter.close();
+    }
+
 }

@@ -7,20 +7,16 @@ package be.vanoosten.esa;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
-import org.apache.lucene.store.ByteArrayDataOutput;
 
 /**
  *
  * @author user
  */
-class ProducerConsumerTokenStream extends TokenStream {
+class CachingTokenStream extends TokenStream {
 
     private int i = -1;
     private final ArrayList<Token> queue;
@@ -28,15 +24,12 @@ class ProducerConsumerTokenStream extends TokenStream {
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PayloadAttribute payloadAtt = addAttribute(PayloadAttribute.class);
 
-    ProducerConsumerTokenStream() {
+    CachingTokenStream() {
         this.queue = new ArrayList<>();
     }
 
     void produceToken(Token token) {
         queue.add(token);
-    }
-
-    void finishProducingTokens() {
     }
 
     @Override
