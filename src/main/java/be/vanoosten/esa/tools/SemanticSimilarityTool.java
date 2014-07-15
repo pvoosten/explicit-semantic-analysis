@@ -6,7 +6,6 @@
 
 package be.vanoosten.esa.tools;
 
-import be.vanoosten.esa.tools.Vectorizer;
 import java.io.IOException;
 import org.apache.lucene.queryparser.classic.ParseException;
 

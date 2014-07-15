@@ -9,6 +9,7 @@ import be.vanoosten.esa.WikiIndexer;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.index.IndexReader;
@@ -35,14 +36,21 @@ public class ConceptVector {
             conceptWeights.put(concept, (float) (conceptWeights.get(concept) / norm));
         }
     }
-    
-    float dotProduct(ConceptVector other){
+
+    public float dotProduct(ConceptVector other) {
         Set<String> commonConcepts = new HashSet<>(other.conceptWeights.keySet());
         commonConcepts.retainAll(conceptWeights.keySet());
         double dotProd = 0.0;
-        for(String concept : commonConcepts){
-            dotProd += conceptWeights.get(concept)* other.conceptWeights.get(concept);
+        for (String concept : commonConcepts) {
+            dotProd += conceptWeights.get(concept) * other.conceptWeights.get(concept);
         }
         return (float) dotProd;
+    }
+
+    public Iterator<String> topConcepts(int n) {
+        return conceptWeights.entrySet().stream().
+                sorted((Map.Entry<String, Float> e1, Map.Entry<String, Float> e2) -> (int) Math.signum(e1.getValue() - e2.getValue())).
+                map(e -> e.getKey()).
+                iterator();
     }
 }

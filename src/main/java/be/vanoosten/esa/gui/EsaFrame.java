@@ -3,26 +3,28 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package be.vanoosten.esa.gui;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 /**
  *
  * @author user
  */
-public class EsaFrame extends javax.swing.JFrame {
+public class EsaFrame extends javax.swing.JFrame implements PropertyChangeListener {
 
-    
     private EsaViewModel configuration;
-    
-    public EsaViewModel getConfiguration(){
+
+    public EsaViewModel getConfiguration() {
         return configuration;
     }
-    
-    public void setConfiguration(EsaViewModel configuration){
+
+    public final void setConfiguration(EsaViewModel configuration) {
         this.configuration = configuration;
+        configuration.addPropertyChangeListener(this);
     }
-    
+
     /**
      * Creates new form EsaFrame
      */
@@ -43,25 +45,25 @@ public class EsaFrame extends javax.swing.JFrame {
 
         jScrollPane2 = new javax.swing.JScrollPane();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
+        outputText = new javax.swing.JTextArea();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jScrollPane3 = new javax.swing.JScrollPane();
-        jTextArea2 = new javax.swing.JTextArea();
+        inputText = new javax.swing.JTextArea();
         jButton1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ESA tools");
 
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
+        outputText.setColumns(20);
+        outputText.setRows(5);
 
-        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.outputText}"), jTextArea1, org.jdesktop.beansbinding.BeanProperty.create("text_ON_ACTION_OR_FOCUS_LOST"));
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.outputText}"), outputText, org.jdesktop.beansbinding.BeanProperty.create("text_ON_ACTION_OR_FOCUS_LOST"));
         bindingGroup.addBinding(binding);
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.foo}"), jTextArea1, org.jdesktop.beansbinding.BeanProperty.create("name"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.foo}"), outputText, org.jdesktop.beansbinding.BeanProperty.create("name"));
         bindingGroup.addBinding(binding);
 
-        jScrollPane1.setViewportView(jTextArea1);
+        jScrollPane1.setViewportView(outputText);
 
         jScrollPane2.setViewportView(jScrollPane1);
 
@@ -69,13 +71,13 @@ public class EsaFrame extends javax.swing.JFrame {
 
         jLabel2.setText("output text");
 
-        jTextArea2.setColumns(20);
-        jTextArea2.setRows(5);
+        inputText.setColumns(20);
+        inputText.setRows(5);
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.inputText}"), jTextArea2, org.jdesktop.beansbinding.BeanProperty.create("text_ON_FOCUS_LOST"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${configuration.inputText}"), inputText, org.jdesktop.beansbinding.BeanProperty.create("text_ON_FOCUS_LOST"));
         bindingGroup.addBinding(binding);
 
-        jScrollPane3.setViewportView(jTextArea2);
+        jScrollPane3.setViewportView(inputText);
 
         jButton1.setText("jButton1");
         jButton1.addActionListener(new java.awt.event.ActionListener() {
@@ -125,6 +127,7 @@ public class EsaFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        getConfiguration().setInputText(getInputText());
         getConfiguration().runSelectedTool();
     }//GEN-LAST:event_jButton1ActionPerformed
 
@@ -164,14 +167,42 @@ public class EsaFrame extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTextArea inputText;
     private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
-    private javax.swing.JTextArea jTextArea1;
-    private javax.swing.JTextArea jTextArea2;
+    private javax.swing.JTextArea outputText;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        String propertyName = evt.getPropertyName();
+        if ("outputText".equals(propertyName) && !configuration.getOutputText().equals(getOutputText())) {
+            setOutputText(configuration.getOutputText());
+        } else if ("inputText".equals(propertyName) && !configuration.getInputText().equals(getInputText())) {
+            setInputText(configuration.getInputText());
+        }
+    }
+
+    private String getOutputText() {
+        String value = outputText.getText();
+        return value == null ? "" : value;
+    }
+
+    private void setOutputText(String newValue) {
+        outputText.setText(newValue);
+    }
+
+    private void setInputText(String newValue) {
+        inputText.setText(newValue);
+    }
+
+    private String getInputText() {
+        String value = inputText.getText();
+        return value == null ? "" : value;
+    }
 }

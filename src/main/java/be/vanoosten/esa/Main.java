@@ -56,10 +56,11 @@ public class Main {
         File wikipediaDumpFile = new File(String.join(File.separator, "D:", "Downloads", "nlwiki", "nlwiki-20140611-pages-articles-multistream.xml.bz2"));
         String startTokens = "geheim anoniem auteur verhalen lezen schrijven wetenschappelijk artikel peer review";
         */
-        String indexPath = String.join(File.separator, "D:", "Development", "esa", "enwiki");
-        File wikipediaDumpFile = new File(indexPath, String.join(File.separator, "dump", "enwiki-20140614-pages-articles-multistream.xml.bz2"));
+        WikiFactory factory = new EnwikiFactory();
+        File indexPath = factory.getIndexRootPath();
+        File wikipediaDumpFile = factory.getWikipediaDumpFile();
         String startTokens = "secret anonymous author stories read write scientific article peer review";
-        CharArraySet stopWords = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
+        CharArraySet stopWords = factory.getStopWords();
 
         File termDocIndexDirectory = new File(indexPath, "termdoc");
         File conceptTermIndexDirectory = new File(indexPath, "conceptterm");

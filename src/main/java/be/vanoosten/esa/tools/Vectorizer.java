@@ -10,6 +10,8 @@ import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
 import static org.apache.lucene.util.Version.LUCENE_48;
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -49,16 +51,17 @@ public class Vectorizer implements AutoCloseable{
     
     public ConceptVector vectorize(String text) throws ParseException, IOException{
         Query query = queryParser.parse(text);
-        TopDocs td = searcher.search(query, 100);
-        if(td.totalHits > 100){
-            td = searcher.search(query, td.totalHits);
-        }
+        TopDocs td = searcher.search(query, 5000);
         return new ConceptVector(td, indexReader);
     }
 
     @Override
-    public void close() throws Exception {
-        indexReader.close();
-        termToConceptDirectory.close();
+    public void close() {
+        try {
+            indexReader.close();
+            termToConceptDirectory.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Vectorizer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }
