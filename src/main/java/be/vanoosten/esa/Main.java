@@ -62,8 +62,8 @@ public class Main {
         String startTokens = "secret anonymous author stories read write scientific article peer review";
         CharArraySet stopWords = factory.getStopWords();
 
-        File termDocIndexDirectory = new File(indexPath, "termdoc");
-        File conceptTermIndexDirectory = new File(indexPath, "conceptterm");
+        File termDocIndexDirectory = factory.getTermDocIndexDirectory();
+        File conceptTermIndexDirectory = factory.getConceptTermIndexDirectory();
 
         // indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
         // createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
@@ -71,37 +71,6 @@ public class Main {
         //     findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
         //     System.out.println("");
         // }
-    }
-
-    static void findRelatedTerms(File termDocIndexDirectory, File conceptTermIndexDirectory, String queryText, CharArraySet stopWords) throws IOException, ParseException {
-        try (
-                Directory conceptIndex = FSDirectory.open(termDocIndexDirectory);
-                IndexReader conceptIndexReader = DirectoryReader.open(conceptIndex);
-                Directory relatedTermsIndex = FSDirectory.open(conceptTermIndexDirectory);
-                IndexReader relatedTermsIndexReader = DirectoryReader.open(relatedTermsIndex);) {
-            IndexSearcher conceptSearcher = new IndexSearcher(conceptIndexReader);
-            Analyzer analyzer = new WikiAnalyzer(LUCENE_48, stopWords);
-            QueryParser conceptQueryParser = new QueryParser(LUCENE_48, WikiIndexer.TEXT_FIELD, analyzer);
-
-            IndexSearcher relatedTermsSearcher = new IndexSearcher(relatedTermsIndexReader);
-
-            Query conceptQuery = conceptQueryParser.parse(queryText);
-            System.out.println(String.format("%s[shape=box, color=\"red\"];", queryText));
-            BooleanQuery relatedTermsQuery = new BooleanQuery();
-            TopDocs topDocs = conceptSearcher.search(conceptQuery, 100);
-            for (ScoreDoc sd : topDocs.scoreDocs) {
-                String concept = conceptIndexReader.document(sd.doc).get(WikiIndexer.TITLE_FIELD);
-                TermQuery conceptAsTermQuery = new TermQuery(new Term("concept", concept));
-                conceptAsTermQuery.setBoost(sd.score);
-                relatedTermsQuery.add(conceptAsTermQuery, Occur.SHOULD);
-            }
-            TopDocs topTerms = relatedTermsSearcher.search(relatedTermsQuery, 20);
-            // System.out.println("A total of " + topTerms.totalHits + " related terms found.");
-            for (ScoreDoc sd : topTerms.scoreDocs) {
-                String term = relatedTermsIndexReader.document(sd.doc).get(WikiIndexer.TEXT_FIELD);
-                System.out.println(String.format(Locale.US, "%s -- %s [label=%.3f];", queryText, term, sd.score));
-            }
-        }
     }
 
     static void createConceptTermIndex(File termDocIndexDirectory, File conceptTermIndexDirectory) throws IOException {

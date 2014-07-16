@@ -3,7 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package be.vanoosten.esa.tools;
 
 import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
@@ -25,18 +24,20 @@ import org.apache.lucene.store.FSDirectory;
 
 /**
  * Can present text as a vector of weighted concepts.
+ *
  * @author PvO
  */
-public class Vectorizer implements AutoCloseable{
+public class Vectorizer implements AutoCloseable {
 
-    
     Directory termToConceptDirectory;
     IndexReader indexReader;
     IndexSearcher searcher;
     QueryParser queryParser;
-    
+    int conceptCount;
+
     /**
      * Creates a new Vectorizer
+     *
      * @param indexDirectory The directory where to find the indices
      * @param analyzer The analyzer to use to create search queries
      * @throws java.io.IOException
@@ -47,12 +48,21 @@ public class Vectorizer implements AutoCloseable{
         indexReader = DirectoryReader.open(termToConceptDirectory);
         searcher = new IndexSearcher(indexReader);
         queryParser = new QueryParser(LUCENE_48, TEXT_FIELD, analyzer);
+        conceptCount = 100;
     }
-    
-    public ConceptVector vectorize(String text) throws ParseException, IOException{
+
+    public ConceptVector vectorize(String text) throws ParseException, IOException {
         Query query = queryParser.parse(text);
-        TopDocs td = searcher.search(query, 5000);
+        TopDocs td = searcher.search(query, conceptCount);
         return new ConceptVector(td, indexReader);
+    }
+
+    public int getConceptCount() {
+        return conceptCount;
+    }
+
+    public void setConceptCount(int conceptCount) {
+        this.conceptCount = conceptCount;
     }
 
     @Override

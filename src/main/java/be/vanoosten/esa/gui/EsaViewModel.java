@@ -8,9 +8,12 @@ package be.vanoosten.esa.gui;
 import be.vanoosten.esa.EnwikiFactory;
 import be.vanoosten.esa.WikiFactory;
 import be.vanoosten.esa.tools.ConceptVector;
+import be.vanoosten.esa.tools.RelatedTokensFinder;
 import be.vanoosten.esa.tools.Vectorizer;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 /**
@@ -64,6 +67,25 @@ public final class EsaViewModel extends AbstractViewModel {
 
         // conceptvector tonen
         setOutputText("Even geduld...");
+        // showConcepts();
+        showRelatedTokens();
+    }
+
+    private void showRelatedTokens() {
+        try {
+            StringBuilder buf = new StringBuilder();
+            factory.
+                    getOrCreateRelatedTokensFinder().
+                    findRelatedTerms(getInputText(), 50).
+                    forEach(t -> buf.append(t.getKey()).append('\n'));
+            setOutputText(buf.toString());
+        } catch (ParseException | IOException ex) {
+            Logger.getLogger(EsaViewModel.class.getName()).log(Level.SEVERE, null, ex);
+            setOutputText(ex.toString());
+        }
+    }
+
+    private void showConcepts() {
         try {
             Vectorizer vectorizer = factory.getOrCreateVectorizer();
             StringBuilder out = new StringBuilder();
