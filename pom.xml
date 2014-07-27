@@ -37,5 +37,11 @@
             <artifactId>beansbinding</artifactId>
             <version>1.2.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.tinkerpop.blueprints</groupId>
+            <artifactId>blueprints-graph-jung</artifactId>
+            <version>2.5.0</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 </project>

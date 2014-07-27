@@ -84,6 +84,8 @@ public final class EsaViewModel extends AbstractViewModel {
             setOutputText(ex.toString());
         }
     }
+    
+    #use the brainstormer;
 
     private void showConcepts() {
         try {

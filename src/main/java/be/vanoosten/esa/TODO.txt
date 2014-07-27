@@ -12,6 +12,12 @@ Actief zoeken naar connecties tussen termen
     tot er termen gevonden worden die voor de andere startterm ook in de tweede, derde, ... graad voorkomen.
 ==> Opbouwen van een graaf. Verwijder alle knopen met graad 1, en opnieuw tot er geen meer zijn.
 
+    implementeer de automatische brainstormer op basis van de RelatedTokensFinder.
+    Start met startTokens
+    zoek related tokens voor alle startTokens
+    zoek verder tot X aantal paden of totaal gewicht W tussen alle startTokens bestaan.
+
+
 Maak van de methode Main.createConceptTermIndex de klasse ConceptVectorIndexer
 ==============================================================================
 Indexeer willekeurige teksten mbv Vectorizer
