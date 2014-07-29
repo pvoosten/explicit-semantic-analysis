@@ -7,6 +7,7 @@ package be.vanoosten.esa.gui;
 
 import be.vanoosten.esa.EnwikiFactory;
 import be.vanoosten.esa.WikiFactory;
+import be.vanoosten.esa.brainstorm.Brainstormer;
 import be.vanoosten.esa.tools.ConceptVector;
 import be.vanoosten.esa.tools.RelatedTokensFinder;
 import be.vanoosten.esa.tools.Vectorizer;
@@ -68,7 +69,8 @@ public final class EsaViewModel extends AbstractViewModel {
         // conceptvector tonen
         setOutputText("Even geduld...");
         // showConcepts();
-        showRelatedTokens();
+        // showRelatedTokens();
+        showBrainstorm();
     }
 
     private void showRelatedTokens() {
@@ -85,7 +87,11 @@ public final class EsaViewModel extends AbstractViewModel {
         }
     }
     
-    #use the brainstormer;
+    private void showBrainstorm(){
+        String[] startTokens = getInputText().split("[\r\n\f]+");
+        Brainstormer brainstormer = new Brainstormer(factory, 10, 5, startTokens);
+        setOutputText(brainstormer.toNeatoScript());
+    }
 
     private void showConcepts() {
         try {

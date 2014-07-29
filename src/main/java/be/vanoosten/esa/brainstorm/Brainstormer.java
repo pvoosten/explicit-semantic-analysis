@@ -12,7 +12,6 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
-import com.tinkerpop.blueprints.oupls.jung.GraphJung;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,7 +19,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 /**
@@ -32,10 +30,14 @@ public class Brainstormer {
     public static final String SCORE_PROPERTY = "score";
     public static final String RELATED_EDGE = "related";
     public static final String ERROR_EDGE = "error";
+    public static final String START_VERTEX = "start";
+    public static final String TOKEN_PROPERTY = "token";
 
     private final Graph g;
     private final WikiFactory wikiFactory;
-    private final Vertex[] startTokenVertices;
+    private final Integer[] startTokenVertices;
+
+    private int lastVertexId = 0;
 
     /**
      *
@@ -51,30 +53,31 @@ public class Brainstormer {
         startTokenVertices = addStartTokens(startTokens);
 
         // mark the start token vertices as end points
-        List<Vertex> endPoints = new ArrayList<>();
-        endPoints.addAll(Arrays.asList(startTokenVertices));
+        List<Integer> endPoints = Arrays.asList(startTokenVertices);
         // Until end condition reached, find new tokens
         RelatedTokensFinder relatedTokensFinder = wikiFactory.getOrCreateRelatedTokensFinder();
         do {
-            List<Vertex> newEndPoints = new ArrayList<>();
-            for (Vertex endPoint : endPoints) {
-                String endPointToken = (String) endPoint.getId();
+            List<Integer> newEndPoints = new ArrayList<>();
+            for (Integer endPoint : endPoints) {
+                String endPointToken = g.getVertex(endPoint).getProperty(TOKEN_PROPERTY).toString();
                 try {
                     List<Entry<String, Float>> relatedTerms = relatedTokensFinder.findRelatedTerms(endPointToken, breadth);
                     for (Entry<String, Float> entry : relatedTerms) {
                         String token = entry.getKey();
+                        int id = lastVertexId;
+                        Integer newTokenVertex = addTokenVertex(token);
                         float score = entry.getValue();
-                        Vertex newTokenVertex = g.getVertex(token);
-                        if (newTokenVertex == null) {
-                            newTokenVertex = g.addVertex(token);
+                        if (id != lastVertexId) {
+                            // the token was added
                             newEndPoints.add(newTokenVertex);
                         }
-                        Edge e = endPoint.addEdge(RELATED_EDGE, newTokenVertex);
+                        Edge e = addEdge(endPoint, newTokenVertex, RELATED_EDGE);
                         e.setProperty(SCORE_PROPERTY, score);
                     }
                 } catch (ParseException | IOException ex) {
                     Logger.getLogger(Brainstormer.class.getName()).log(Level.SEVERE, null, ex);
-                    Edge e = endPoint.addEdge(ERROR_EDGE, getErrorVertex());
+                    Vertex v = g.getVertex(endPoint);
+                    Edge e = v.addEdge(ERROR_EDGE, getErrorVertex());
                     e.setProperty("message", ex.getMessage());
                 }
             }
@@ -84,16 +87,43 @@ public class Brainstormer {
         // Until no more tokens are branched, branch tokens with degree 1
         // start with endPoints, which contains all the leaves.
         while (!endPoints.isEmpty()) {
-            Vertex endPoint = endPoints.get(0);
-            long degree = endPoint.getEdges(Direction.BOTH, RELATED_EDGE).spliterator().getExactSizeIfKnown();
+            Integer endPoint = endPoints.get(0);
+            Vertex vEnd = g.getVertex(endPoint);
+            long degree = vEnd.getEdges(Direction.BOTH, RELATED_EDGE).spliterator().getExactSizeIfKnown();
             if (degree == 1) {
-                Edge edge = endPoint.getEdges(Direction.BOTH, RELATED_EDGE).iterator().next();
-                Vertex newEndpoint = edge.getVertex(Direction.IN) == endPoint ? endPoint : edge.getVertex(Direction.OUT);
-                endPoints.add(newEndpoint);
+                Edge edge = vEnd.getEdges(Direction.BOTH, RELATED_EDGE).iterator().next();
+                Vertex newEndpoint = edge.getVertex(Direction.IN) == vEnd ? vEnd : edge.getVertex(Direction.OUT);
+                endPoints.add((Integer) newEndpoint.getId());
                 g.removeEdge(edge);
-                g.removeVertex(endPoint);
+                g.removeVertex(vEnd);
             }
         }
+    }
+
+    private Edge addEdge(int fromVertexId, int toVertexId, String type) {
+        return g.getVertex(fromVertexId).addEdge(type, g.getVertex(toVertexId));
+    }
+
+    private int addTokenVertex(final String token) {
+        return addTokenVertex(token, false);
+    }
+
+    private int addTokenVertex(final String token, final boolean startToken) {
+        Iterable<Vertex> verts = g.getVertices(TOKEN_PROPERTY, token);
+        long count = verts.spliterator().getExactSizeIfKnown();
+        int vertexId = -1;
+        if (count <= 0L) {
+            lastVertexId++;
+            vertexId = lastVertexId;
+            Vertex v = g.addVertex(vertexId);
+            v.setProperty(TOKEN_PROPERTY, token);
+            v.setProperty(START_VERTEX, startToken);
+        } else if (count == 1L) {
+            vertexId = (int) verts.iterator().next().getId();
+        } else {
+            throw new IllegalStateException("There are multiple vertices with the same token");
+        }
+        return vertexId;
     }
 
     private Vertex getErrorVertex() {
@@ -104,14 +134,36 @@ public class Brainstormer {
         return errorVertex;
     }
 
-    private Vertex[] addStartTokens(String[] startTokens) {
+    private Integer[] addStartTokens(final String[] startTokens) {
         // Add start tokens
-        Vertex start = g.addVertex("* * * START * * *");
-        Vertex[] startTokenVertices = new Vertex[startTokens.length];
+        @SuppressWarnings("LocalVariableHidesMemberVariable")
+        Integer[] startTokenVertices = new Integer[startTokens.length];
         for (int i = 0; i < startTokens.length; i++) {
-            startTokenVertices[i] = g.addVertex(startTokens[i]);
-            Edge e = start.addEdge("start", startTokenVertices[i]);
+            startTokenVertices[i] = addTokenVertex(startTokens[i], true);
         }
         return startTokenVertices;
+    }
+
+    public String toNeatoScript() {
+        StringBuilder buf = new StringBuilder();
+        buf.append("graph{\nnode[shape=box;];\n");
+        writeNeatoVertices(buf, true);
+        writeNeatoVertices(buf, false);
+
+        buf.append("}");
+        return buf.toString();
+    }
+
+    void writeNeatoVertices(StringBuilder buf, boolean startToken) {
+        for (Vertex v : g.getVertices(START_VERTEX, startToken)) {
+            int id = (Integer) v.getId();
+            String token = (String) v.getProperty(TOKEN_PROPERTY);
+            writeNeatoVertex(buf, id, token, startToken);
+        }
+    }
+
+    private void writeNeatoVertex(StringBuilder buf, int id, String token, boolean startToken) {
+        buf.append(id).append(startToken?"[col=red;label='" : "[label='").append(token).append("'];");
+        buf.append("\n");
     }
 }
