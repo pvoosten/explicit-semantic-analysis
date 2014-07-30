@@ -89,13 +89,21 @@ public class Brainstormer {
         while (!endPoints.isEmpty()) {
             Integer endPoint = endPoints.get(0);
             Vertex vEnd = g.getVertex(endPoint);
-            long degree = vEnd.getEdges(Direction.BOTH, RELATED_EDGE).spliterator().getExactSizeIfKnown();
+            if(vEnd == null){
+                endPoints.remove(0);
+                continue;
+            }
+            Counter c = new Counter();
+            vEnd.getEdges(Direction.BOTH, RELATED_EDGE).spliterator().forEachRemaining(e -> c.count());
+            int degree = c.c;
             if (degree == 1) {
                 Edge edge = vEnd.getEdges(Direction.BOTH, RELATED_EDGE).iterator().next();
-                Vertex newEndpoint = edge.getVertex(Direction.IN) == vEnd ? vEnd : edge.getVertex(Direction.OUT);
-                endPoints.add((Integer) newEndpoint.getId());
+                Vertex newEndpoint = edge.getVertex(Direction.IN) == vEnd ? edge.getVertex(Direction.OUT) : edge.getVertex(Direction.IN);
+                endPoints.add(Integer.parseInt(newEndpoint.getId().toString()));
                 g.removeEdge(edge);
                 g.removeVertex(vEnd);
+            } else if (degree > 1){
+                endPoints.remove(0);
             }
         }
     }
@@ -107,10 +115,19 @@ public class Brainstormer {
     private int addTokenVertex(final String token) {
         return addTokenVertex(token, false);
     }
+    
+    private class Counter{
+        int c = 0;
+        void count(){
+            c++;
+        }
+    }
 
     private int addTokenVertex(final String token, final boolean startToken) {
         Iterable<Vertex> verts = g.getVertices(TOKEN_PROPERTY, token);
-        long count = verts.spliterator().getExactSizeIfKnown();
+        Counter c = new Counter();
+        verts.spliterator().forEachRemaining(v -> c.count());
+        final int count = c.c;
         int vertexId = -1;
         if (count <= 0L) {
             lastVertexId++;
@@ -119,7 +136,7 @@ public class Brainstormer {
             v.setProperty(TOKEN_PROPERTY, token);
             v.setProperty(START_VERTEX, startToken);
         } else if (count == 1L) {
-            vertexId = (int) verts.iterator().next().getId();
+            vertexId = Integer.parseInt(verts.iterator().next().getId().toString());
         } else {
             throw new IllegalStateException("There are multiple vertices with the same token");
         }
@@ -156,7 +173,7 @@ public class Brainstormer {
 
     void writeNeatoVertices(StringBuilder buf, boolean startToken) {
         for (Vertex v : g.getVertices(START_VERTEX, startToken)) {
-            int id = (Integer) v.getId();
+            int id = Integer.parseInt(v.getId().toString());
             String token = (String) v.getProperty(TOKEN_PROPERTY);
             writeNeatoVertex(buf, id, token, startToken);
         }

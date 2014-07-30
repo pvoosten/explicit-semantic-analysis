@@ -89,7 +89,7 @@ public final class EsaViewModel extends AbstractViewModel {
     
     private void showBrainstorm(){
         String[] startTokens = getInputText().split("[\r\n\f]+");
-        Brainstormer brainstormer = new Brainstormer(factory, 10, 5, startTokens);
+        Brainstormer brainstormer = new Brainstormer(factory, 10, 1, startTokens);
         setOutputText(brainstormer.toNeatoScript());
     }
 
