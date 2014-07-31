@@ -163,14 +163,25 @@ public class Brainstormer {
 
     public String toNeatoScript() {
         StringBuilder buf = new StringBuilder();
-        buf.append("graph{\nnode[shape=box;];\n");
+        buf.append("graph g {\nnode[shape=box];\n");
         writeNeatoVertices(buf, true);
         writeNeatoVertices(buf, false);
-
+        writeNeatoEdges(buf);
         buf.append("}");
         return buf.toString();
     }
 
+    void writeNeatoEdges(StringBuilder buf){
+        for(Edge e : g.getEdges()){
+            if(RELATED_EDGE.equals(e.getLabel())){
+                String from = e.getVertex(Direction.OUT).getId().toString();
+                String to = e.getVertex(Direction.IN).getId().toString();
+                float score = e.getProperty(Brainstormer.SCORE_PROPERTY);
+                buf.append(from).append(" -- ").append(to).append(" [label=\"").append(score).append("\"];").append('\n');
+            }
+        }
+    }
+    
     void writeNeatoVertices(StringBuilder buf, boolean startToken) {
         for (Vertex v : g.getVertices(START_VERTEX, startToken)) {
             int id = Integer.parseInt(v.getId().toString());
@@ -180,7 +191,7 @@ public class Brainstormer {
     }
 
     private void writeNeatoVertex(StringBuilder buf, int id, String token, boolean startToken) {
-        buf.append(id).append(startToken?"[col=red;label='" : "[label='").append(token).append("'];");
-        buf.append("\n");
+        buf.append(id).append(startToken?"[color=red, label=\"" : "[label=\"").append(token).append("\"];");
+        buf.append('\n');
     }
 }
