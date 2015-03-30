@@ -21,6 +21,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.lucene.queryparser.classic.ParseException;
 
+# 1 edge per 2 vertices;
+# Vermijd self edges;
+# symmetrische score herberekenen met Vectorizer;
+
 /**
  *
  * @author user
