@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package be.vanoosten.esa;
 
 import java.io.IOException;
@@ -14,7 +9,7 @@ import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 
 /**
  *
- * @author user
+ * @author Philip van Oosten
  */
 class CachingTokenStream extends TokenStream {
 

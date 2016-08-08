@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package be.vanoosten.esa.tools;
 
 import java.io.IOException;
@@ -11,7 +5,7 @@ import org.apache.lucene.queryparser.classic.ParseException;
 
 /**
  *
- * @author user
+ * @author Philip van Oosten
  */
 public class SemanticSimilarityTool {
 

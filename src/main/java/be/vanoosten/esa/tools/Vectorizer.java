@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package be.vanoosten.esa.tools;
 
 import static be.vanoosten.esa.WikiIndexer.TEXT_FIELD;
@@ -25,7 +20,7 @@ import org.apache.lucene.store.FSDirectory;
 /**
  * Can present text as a vector of weighted concepts.
  *
- * @author PvO
+ * @author Philip van Oosten
  */
 public class Vectorizer implements AutoCloseable {
 

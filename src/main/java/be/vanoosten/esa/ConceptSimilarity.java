@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package be.vanoosten.esa;
 
 import org.apache.lucene.index.FieldInvertState;
@@ -13,7 +7,7 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  *
- * @author user
+ * @author Philip van Oosten
  */
 public class ConceptSimilarity extends TFIDFSimilarity{
     

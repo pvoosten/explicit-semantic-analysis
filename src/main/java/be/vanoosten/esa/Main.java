@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package be.vanoosten.esa;
 
 import static be.vanoosten.esa.WikiIndexer.TITLE_FIELD;
@@ -46,7 +41,7 @@ import static org.apache.lucene.util.Version.LUCENE_48;
 
 /**
  *
- * @author user
+ * @author Philip van Oosten
  */
 public class Main {
 
