@@ -4,7 +4,7 @@ import java.io.IOException;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 /**
- *
+ * Calculates a numeric value for the semantic similarity between two texts.
  * @author Philip van Oosten
  */
 public class SemanticSimilarityTool {

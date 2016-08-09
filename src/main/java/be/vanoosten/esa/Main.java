@@ -60,14 +60,17 @@ public class Main {
         File termDocIndexDirectory = factory.getTermDocIndexDirectory();
         File conceptTermIndexDirectory = factory.getConceptTermIndexDirectory();
 
+        // The following lines are commented, because they can take a looong time.
         // indexing(termDocIndexDirectory, wikipediaDumpFile, stopWords);
         // createConceptTermIndex(termDocIndexDirectory, conceptTermIndexDirectory);
-        // for (String queryText : startTokens.split(" ")) {
-        //     findRelatedTerms(termDocIndexDirectory, conceptTermIndexDirectory, queryText, stopWords);
-        //     System.out.println("");
-        // }
     }
 
+    /**
+     * Creates a concept-term index from a term-to-concept index (a full text index of a Wikipedia dump).
+     * @param termDocIndexDirectory The directory that contains the term-to-concept index, which is created by {@code indexing()} or in a similar fashion.
+     * @param conceptTermIndexDirectory The directory that shall contain the concept-term index.
+     * @throws IOException
+     */
     static void createConceptTermIndex(File termDocIndexDirectory, File conceptTermIndexDirectory) throws IOException {
         ExecutorService es = Executors.newFixedThreadPool(2);
 
@@ -158,6 +161,13 @@ public class Main {
         }
     }
 
+    /**
+     * Creates a term to concept index from a Wikipedia article dump.
+     * @param termDocIndexDirectory The directory where the term to concept index must be created
+     * @param wikipediaDumpFile The Wikipedia dump file that must be read to create the index
+     * @param stopWords The words that are not used in the semantic analysis
+     * @throws IOException
+     */
     public static void indexing(File termDocIndexDirectory, File wikipediaDumpFile, CharArraySet stopWords) throws IOException {
         try (Directory directory = FSDirectory.open(termDocIndexDirectory)) {
             Analyzer analyzer = new WikiAnalyzer(LUCENE_48, stopWords);
