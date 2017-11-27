@@ -32,6 +32,7 @@ public class ConceptVector {
             String concept = indexReader.document(scoreDoc.doc).get(WikiIndexer.TITLE_FIELD);
             conceptWeights.put(concept, scoreDoc.score);
         }
+        norm = Math.sqrt(norm);
         for (String concept : conceptWeights.keySet()) {
             conceptWeights.put(concept, (float) (conceptWeights.get(concept) / norm));
         }
